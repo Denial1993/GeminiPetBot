@@ -12,6 +12,10 @@ builder.Services.AddSwaggerGen();
 
 // 3. ★★★ 註冊 GeminiService (這一行很重要，雖然 Service 檔案還沒建，先寫著)
 builder.Services.AddHttpClient<GeminiService>();
+
+// 註冊知識庫服務 (Singleton 代表程式啟動後只讀一次檔案，效能較好)
+builder.Services.AddSingleton<KnowledgeService>();
+
 var app = builder.Build();
 
 // 設定 HTTP request pipeline

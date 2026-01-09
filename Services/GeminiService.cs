@@ -9,34 +9,55 @@ namespace GeminiPetBot.Services
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
+        // private readonly string _endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
         private readonly string _endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
-        public GeminiService(HttpClient httpClient, IConfiguration configuration)
+        // ★ 新增：注入知識庫服務
+        private readonly KnowledgeService _knowledgeService;
+
+        public GeminiService(HttpClient httpClient, IConfiguration configuration, KnowledgeService knowledgeService)
         {
             _httpClient = httpClient;
+            _knowledgeService = knowledgeService; // ★ 存起來
 
-            // 2. 從設定檔讀取 Key
             var keyFromConfig = configuration["Gemini:ApiKey"];
-
             if (string.IsNullOrEmpty(keyFromConfig))
             {
                 throw new Exception("嚴重錯誤: appsettings.json 裡面的 API Key 是空的！");
             }
-
-            // 3. ★關鍵修正★：強制刪除 Key 前後的空白或換行，避免網址壞掉
-            _apiKey = keyFromConfig.Trim();
+            _apiKey = keyFromConfig.Trim(); 
         }
 
         public async Task<ChatResponse> GetAnswerAsync(ChatRequest request)
         {
-            // 4. 準備 Prompt
-            var systemPrompt = $@"
-你是一個專業的寵物醫療助手。
-使用者有一隻 {request.pet_profile.age} 歲的 {request.pet_profile.species}，體重 {request.pet_profile.weight} 公斤。
-使用者問題：{request.message}
+            // 1. 從知識庫撈出所有資料
+            var allKnowledge = _knowledgeService.GetAllKnowledge();
+            var knowledgeJson = JsonConvert.SerializeObject(allKnowledge);
 
-請以 JSON 格式回答，不要使用 Markdown code block。
-格式必須包含：answer, risk_level (low/medium/high), suggested_next_actions (array of strings)。
-如果不知道，請回答不知道。
+            // 2. 組合 Prompt (這就是 RAG 的精隨：把資料餵給 AI)
+            var systemPrompt = $@"
+你是一個專業的寵物醫療助手。請根據以下的「已知知識庫」來回答使用者的問題。
+
+【嚴格規則】
+1. 只能依據「已知知識庫」的內容回答。
+2. 如果知識庫裡沒有相關資訊，請直接回答「不知道」，嚴禁瞎掰。
+3. 如果是高風險症狀（如：呼吸急促、中毒），Risk Level 必須設為 'high' 並建議就醫。
+4. 必須在 'citations' 欄位中列出你參考的 'source' (例如：內部公告 PDF 第 5 頁)。
+
+【已知知識庫】
+{knowledgeJson}
+
+【使用者情境】
+寵物：{request.pet_profile.age} 歲的 {request.pet_profile.species}，體重 {request.pet_profile.weight} 公斤。
+問題：{request.message}
+
+【輸出格式 (JSON Only)】
+請直接回傳 JSON，不要 markdown 標記：
+{{
+    ""answer"": ""你的回答"",
+    ""citations"": [""來源1"", ""來源2""],
+    ""risk_level"": ""low | medium | high"",
+    ""suggested_next_actions"": [""建議行動1"", ""建議行動2""]
+}}
 ";
 
             var googlePayload = new
@@ -51,38 +72,31 @@ namespace GeminiPetBot.Services
             };
 
             var jsonContent = new StringContent(JsonConvert.SerializeObject(googlePayload), Encoding.UTF8, "application/json");
-
-            // 5. 組合網址並印出 (方便除錯，如果還有錯可以看到網址長怎樣)
             var finalUrl = $"{_endpoint}?key={_apiKey}";
-
-            // 發送請求
+            
             var response = await _httpClient.PostAsync(finalUrl, jsonContent);
 
-            // 6. ★除錯核心★：如果失敗，讀取 Google 罵我們的內容
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                // 這裡會顯示 400, 404, 500 等具體錯誤
-                throw new Exception($"Google API 報錯! Code: {response.StatusCode}, URL: {finalUrl}, 詳細: {errorContent}");
+                throw new Exception($"Google API 報錯! Code: {response.StatusCode}, 詳細: {errorContent}");
             }
 
             var responseString = await response.Content.ReadAsStringAsync();
             dynamic googleResponse = JsonConvert.DeserializeObject(responseString);
-
-            // 7. 取出結果
-            try
+            
+            try 
             {
-                string rawText = googleResponse.candidates[0].content.parts[0].text;
-                // 清理 Markdown
-                rawText = rawText.Replace("```json", "").Replace("```", "").Trim();
-                return JsonConvert.DeserializeObject<ChatResponse>(rawText);
+                 string rawText = googleResponse.candidates[0].content.parts[0].text;
+                 // 清理 Markdown
+                 rawText = rawText.Replace("```json", "").Replace("```", "").Trim();
+                 return JsonConvert.DeserializeObject<ChatResponse>(rawText);
             }
             catch
             {
-                // 如果 AI 沒回傳標準 JSON，回傳原始文字
-                return new ChatResponse
-                {
-                    answer = "解析錯誤，但 AI 有回應：" + responseString,
+                return new ChatResponse 
+                { 
+                    answer = "解析錯誤，但 AI 有回應：" + responseString, 
                     risk_level = "low"
                 };
             }
