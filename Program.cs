@@ -1,5 +1,6 @@
 // Program.cs
 using GeminiPetBot.Services;
+using System.Reflection; 
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,7 +9,15 @@ builder.Services.AddControllers();
 
 // 2. 加入 Swagger (API 文件與測試介面)
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    // 取得 XML 檔案名稱 (通常是 專案名稱.xml)
+    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    // 組合出完整路徑
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
+    // 告訴 Swagger 去讀它
+    options.IncludeXmlComments(xmlPath);
+});
 
 // 3. ★★★ 註冊 GeminiService (這一行很重要，雖然 Service 檔案還沒建，先寫著)
 builder.Services.AddHttpClient<GeminiService>();
@@ -27,6 +36,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
+app.UseDefaultFiles(); // 讓系統自動找 index.html
+app.UseStaticFiles();  // 啟用 wwwroot 資料夾功能
 app.MapControllers();
 
 app.Run();

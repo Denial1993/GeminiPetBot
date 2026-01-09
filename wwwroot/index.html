@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini 寵物智能助手 MVP</title>
+    <style>
+        /* (保留原本樣式，新增 select 樣式) */
+        :root { --bg-color: #1a1a1a; --chat-bg: #2d2d2d; --user-msg-bg: #007bff; --ai-msg-bg: #383838; --text-color: #e0e0e0; --accent-color: #4caf50; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; height: 100vh; }
+        .chat-container { width: 100%; max-width: 800px; background-color: var(--chat-bg); display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .header { padding: 20px; background-color: #202020; border-bottom: 1px solid #444; text-align: center; }
+        .header h2 { margin: 0; color: var(--accent-color); }
+        .header p { margin: 5px 0 0; font-size: 0.9em; color: #888; }
+        #chat-history { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .message { max-width: 80%; padding: 12px 16px; border-radius: 15px; line-height: 1.5; position: relative; }
+        .message.user { align-self: flex-end; background-color: var(--user-msg-bg); border-bottom-right-radius: 2px; }
+        .message.ai { align-self: flex-start; background-color: var(--ai-msg-bg); border-bottom-left-radius: 2px; }
+        .citation-box { margin-top: 10px; padding-top: 10px; border-top: 1px solid #555; font-size: 0.85em; color: #aaa; }
+        .citation-badge { display: inline-block; background-color: #444; padding: 2px 6px; border-radius: 4px; margin-right: 5px; font-size: 0.8em; border: 1px solid #555; }
+        .risk-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-weight: bold; font-size: 0.8em; margin-bottom: 5px; }
+        .risk-high { background-color: #ff4444; color: white; }
+        .risk-medium { background-color: #ffbb33; color: black; }
+        .input-area { padding: 20px; background-color: #202020; display: flex; flex-direction: column; gap: 10px; }
+        .controls { display: flex; gap: 10px; }
+        
+        /* 新增：物種選擇器樣式 */
+        select { background-color: #333; color: white; border: 1px solid #444; padding: 10px; border-radius: 25px; outline: none; cursor: pointer; }
+        
+        .input-row { display: flex; gap: 10px; }
+        input[type="text"] { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background-color: #333; color: white; outline: none; }
+        button { padding: 10px 20px; border-radius: 25px; border: none; background-color: var(--accent-color); color: white; cursor: pointer; font-weight: bold; }
+        button:disabled { background-color: #555; cursor: not-allowed; }
+        .typing-indicator { font-style: italic; color: #888; font-size: 0.9em; margin-left: 10px; display: none;}
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="header">
+        <h2>🐶 Gemini 寵物醫療助手</h2>
+        <p>依據公司內部 PDF 知識庫回答 (MVP Demo)</p>
+    </div>
+
+    <div id="chat-history">
+        <div class="message ai">
+            你好！我是你的 AI 寵物助手。請先選擇您的寵物種類，再詢問問題。
+        </div>
+    </div>
+
+    <div style="padding: 0 20px;">
+        <span id="typing" class="typing-indicator">AI 正在查詢知識庫...</span>
+    </div>
+
+    <div class="input-area">
+        <div class="controls">
+            <select id="pet-species">
+                <option value="dog">🐶 狗狗</option>
+                <option value="cat">🐱 貓咪</option>
+            </select>
+        </div>
+        <div class="input-row">
+            <input type="text" id="user-input" placeholder="輸入你的問題..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" id="send-btn">發送</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function sendMessage() {
+        const inputField = document.getElementById('user-input');
+        const speciesSelect = document.getElementById('pet-species'); // 抓取選擇的物種
+        const sendBtn = document.getElementById('send-btn');
+        const message = inputField.value.trim();
+        
+        if (!message) return;
+
+        // 顯示使用者訊息
+        appendMessage(message, 'user');
+        inputField.value = '';
+        inputField.disabled = true;
+        sendBtn.disabled = true;
+        document.getElementById('typing').style.display = 'block';
+
+        try {
+            // 呼叫 API
+            const response = await fetch('/Chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: "web_user",
+                    pet_profile: { 
+                        species: speciesSelect.value, // ★ 這裡動態帶入 user 選的值
+                        age: 3, 
+                        weight: 5 
+                    }, 
+                    message: message
+                })
+            });
+
+            if (!response.ok) throw new Error("API Error");
+            const data = await response.json();
+            appendAIMessage(data);
+
+        } catch (error) {
+            appendMessage("發生錯誤，請檢查後端是否啟動。", 'ai');
+        } finally {
+            inputField.disabled = false;
+            sendBtn.disabled = false;
+            inputField.focus();
+            document.getElementById('typing').style.display = 'none';
+        }
+    }
+
+    function appendMessage(text, sender) {
+        const history = document.getElementById('chat-history');
+        const div = document.createElement('div');
+        div.className = `message ${sender}`;
+        div.textContent = text;
+        history.appendChild(div);
+        history.scrollTop = history.scrollHeight;
+    }
+
+    function appendAIMessage(data) {
+        const history = document.getElementById('chat-history');
+        const div = document.createElement('div');
+        div.className = 'message ai';
+
+        let riskHtml = '';
+        if (data.risk_level === 'high') riskHtml = `<div class="risk-badge risk-high">⚠️ 高風險 - 建議就醫</div>`;
+        else if (data.risk_level === 'medium') riskHtml = `<div class="risk-badge risk-medium">⚠️ 注意觀察</div>`;
+
+        let citationsHtml = '';
+        if (data.citations && data.citations.length > 0) {
+            citationsHtml = `<div class="citation-box">📚 參考來源：<br>${data.citations.map(c => `<span class="citation-badge">${c}</span>`).join('')}</div>`;
+        }
+
+        div.innerHTML = `${riskHtml}<div>${data.answer}</div>${citationsHtml}`;
+        history.appendChild(div);
+        history.scrollTop = history.scrollHeight;
+    }
+
+    function handleKeyPress(event) { if (event.key === 'Enter') sendMessage(); }
+</script>
+</body>
+</html>
