@@ -1,0 +1,25 @@
+# --- Build 結果 (絕對不要傳) ---
+bin/
+obj/
+
+# --- Visual Studio 設定檔 (個人設定，不要傳) ---
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# --- VS Code 設定檔 (看情況，通常不想傳個人設定) ---
+.vscode/
+
+# --- 敏感資訊與環境變數 ---
+# 為了比賽 Demo，我們保留 appsettings.json (但在傳上去前要清空 Key)
+# appsettings.Development.json 通常放本機開發設定，建議忽略
+appsettings.Development.json
+
+# --- 作業系統縮圖 ---
+.DS_Store
+Thumbs.db
+
+# --- 測試結果 ---
+TestResults/
