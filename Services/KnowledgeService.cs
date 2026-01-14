@@ -24,29 +24,32 @@ namespace GeminiPetBot.Services
 
         public void LoadKnowledge()
         {
-            // 如果檔案存在就讀取，不存在就回傳空陣列
-            // 這裡要注意：VS 編譯時會把檔案複製到 bin 目錄，我們等等要設定一下
-            if (File.Exists(_filePath))
+            _knowledgeBase = new List<KnowledgeEntry>();
+
+            // 取得資料夾路徑
+            var dataPath = Path.Combine(AppContext.BaseDirectory, "Data");
+            if (!Directory.Exists(dataPath)) return;
+
+            // ★ 修改點：讀取該資料夾下 "所有" .json 檔案
+            var files = Directory.GetFiles(dataPath, "*.json");
+
+            foreach (var file in files)
             {
-                var json = File.ReadAllText(_filePath);
-                _knowledgeBase = JsonConvert.DeserializeObject<List<KnowledgeEntry>>(json);
-            }
-            else
-            {
-                // 本機開發時有時候路徑會跑掉，這裡做個備用檢查
-                var localPath = Path.Combine(Directory.GetCurrentDirectory(), "Data", "knowledge.json");
-                if (File.Exists(localPath))
+                try
                 {
-                    var json = File.ReadAllText(localPath);
-                    _knowledgeBase = JsonConvert.DeserializeObject<List<KnowledgeEntry>>(json);
+                    var json = File.ReadAllText(file);
+                    var entries = JsonConvert.DeserializeObject<List<KnowledgeEntry>>(json);
+                    if (entries != null)
+                    {
+                        _knowledgeBase.AddRange(entries);
+                    }
                 }
-                else
+                catch
                 {
-                    _knowledgeBase = new List<KnowledgeEntry>();
+                    // 略過格式錯誤的檔案，避免 crash
                 }
             }
         }
-
         public List<KnowledgeEntry> GetAllKnowledge()
         {
             return _knowledgeBase ?? new List<KnowledgeEntry>();

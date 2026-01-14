@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>知識庫管理後台</title>
+    <style>
+        body { font-family: sans-serif; padding: 50px; background: #f0f0f0; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
+        h2 { text-align: center; color: #333; }
+        input { margin: 20px 0; }
+        button { background: #4caf50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; }
+        button:hover { background: #45a049; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>📂 上傳新的知識檔案 (.json)</h2>
+        <input type="file" id="fileInput" accept=".json" />
+        <button onclick="uploadFile()">確認上傳</button>
+    </div>
+
+    <script>
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            if(fileInput.files.length === 0) { alert('請選檔案'); return; }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const res = await fetch('/Chat/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if(res.ok) {
+                    alert('上傳成功！AI 已經學會新知識了。');
+                    fileInput.value = '';
+                } else {
+                    alert('上傳失敗');
+                }
+            } catch(e) {
+                alert('錯誤：' + e);
+            }
+        }
+    </script>
+</body>
+</html>

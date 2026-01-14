@@ -23,6 +23,8 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddHttpClient<GeminiService>();
 
 // 註冊知識庫服務 (Singleton 代表程式啟動後只讀一次檔案，效能較好)
+// AddSingleton 的意思是：「請幫我建立一個 KnowledgeService，而且整個應用程式只要這一個實體。」
+// 這樣做的好處是：當你在 Upload API 呼叫 LoadKnowledge() 更新了資料後，因為大家共用同一個實體，所以 Chat API 下一次回答時，就會用到更新後的資料。
 builder.Services.AddSingleton<KnowledgeService>();
 
 var app = builder.Build();
