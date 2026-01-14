@@ -25,6 +25,13 @@
      "ApiKey": "請在此填入您的_GOOGLE_GEMINI_API_KEY"
    }
 
+### 3. 關於更換知識庫內容
+編輯[knowledge.json] 並儲存後即可
+檔案位置：\GeminiPetBot_Daniel_MVP\GeminiPetBot\Data
+
+### 4.本專案使用 Gemini 版本
+gemini-3-flash-preview
+
 ## ✅ 完整驗收題庫 (已全數通過測試)
 本系統已針對競賽要求之 20 題情境完成測試：
 
@@ -57,3 +64,9 @@
 18. 貓咪不吃飯但有喝水
 19. 狗一直抓耳朵
 20. 室內貓需要打疫苗嗎?
+
+## 📅 知識庫版本紀錄 (Changelog)
+| 版本 | 日期 | 更新內容 | 更新人員 |
+| :--- | :--- | :--- | :--- |
+| v1.0 | 2026-01-08 | 初始版本發布 | Daniel |
+| v1.1 | 2026-01-14 | 新增 20條知識項目於 ReadME.md  | Daniel |
