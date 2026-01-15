@@ -9,8 +9,11 @@ namespace GeminiPetBot.Services
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
-        // private readonly string _endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
-        private readonly string _endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
+
+        // private readonly string _endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
+        private readonly string _endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+        // private readonly string _endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
+        
         // ★ 新增：注入知識庫服務
         private readonly KnowledgeService _knowledgeService;
 
@@ -35,30 +38,30 @@ namespace GeminiPetBot.Services
 
             // 2. 組合 Prompt (這就是 RAG 的精隨：把資料餵給 AI)
             var systemPrompt = $@"
-你是一個專業的寵物醫療助手。請根據以下的「已知知識庫」來回答使用者的問題。
+                你是一個專業的寵物醫療助手。請根據以下的「已知知識庫」來回答使用者的問題。
 
-【嚴格規則】
-1. 只能依據「已知知識庫」的內容回答。
-2. 若知識庫無相關資訊，請委婉回答：「抱歉，目前的資料庫中尚未收錄此問題的相關資訊，建議您諮詢專業獸醫師以獲得準確建議。」(語氣需親切專業)。
-3. 如果是高風險症狀（如：呼吸急促、中毒），Risk Level 必須設為 'high' 並建議就醫。
-4. 必須在 'citations' 欄位中列出你參考的 'source' (例如：內部公告 PDF 第 5 頁)。
+                【嚴格規則】
+                1. 只能依據「已知知識庫」的內容回答。
+                2. 若知識庫無相關資訊，請委婉回答：「抱歉，目前的資料庫中尚未收錄此問題的相關資訊，建議您諮詢專業獸醫師以獲得準確建議。」(語氣需親切專業)。
+                3. 如果是高風險症狀（如：呼吸急促、中毒），Risk Level 必須設為 'high' 並建議就醫。
+                4. 必須在 'citations' 欄位中列出你參考的 'source' (例如：內部公告 PDF 第 5 頁)。
 
-【已知知識庫】
-{knowledgeJson}
+                【已知知識庫】
+                {knowledgeJson}
 
-【使用者情境】
-寵物：{request.pet_profile.age} 歲的 {request.pet_profile.species}，體重 {request.pet_profile.weight} 公斤。
-問題：{request.message}
+                【使用者情境】
+                寵物：{request.pet_profile.age} 歲的 {request.pet_profile.species}，體重 {request.pet_profile.weight} 公斤。
+                問題：{request.message}
 
-【輸出格式 (JSON Only)】
-請直接回傳 JSON，不要 markdown 標記：
-{{
-    ""answer"": ""你的回答"",
-    ""citations"": [""來源1"", ""來源2""],
-    ""risk_level"": ""low | medium | high"",
-    ""suggested_next_actions"": [""建議行動1"", ""建議行動2""]
-}}
-";
+                【輸出格式 (JSON Only)】
+                請直接回傳 JSON，不要 markdown 標記：
+                {{
+                    ""answer"": ""你的回答"",
+                    ""citations"": [""來源1"", ""來源2""],
+                    ""risk_level"": ""low | medium | high"",
+                    ""suggested_next_actions"": [""建議行動1"", ""建議行動2""]
+                }}
+                ";
 
             var googlePayload = new
             {
